@@ -14,37 +14,34 @@ export async function POST(req: NextRequest) {
     try {
       event = Object.fromEntries(formData.entries());
     } catch (error) {
-      return NextResponse.json(
-        { message: 'Invalid JSON data format' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Invalid JSON data format' }, { status: 400 });
     }
 
     const file = formData.get('image') as File;
 
-    if (!file)
-      return NextResponse.json(
-        { message: 'Image file is required' },
-        { status: 400 }
-      );
+    if (!file) return NextResponse.json({ message: 'Image file is required' }, { status: 400 });
+
+    let tags = JSON.parse(formData.get('tags') as string);
+    let agenda = JSON.parse(formData.get('agenda') as string);
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const uploadResult = await new Promise((resolve, reject) => {
       cloudinary.uploader
-        .upload_stream(
-          { resource_type: 'image', folder: 'DevEvent' },
-          (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
-          }
-        )
+        .upload_stream({ resource_type: 'image', folder: 'DevEvent' }, (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        })
         .end(buffer);
     });
 
     event.image = (uploadResult as { secure_url: string }).secure_url;
 
-    const createdEvent = await Event.create(event);
+    const createdEvent = await Event.create({
+      ...event,
+      tags,
+      agenda,
+    });
 
     return NextResponse.json(
       {
